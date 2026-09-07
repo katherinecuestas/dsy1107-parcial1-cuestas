@@ -67,6 +67,12 @@ spring:
     # pruebas: la migracion esta escrita en SQL portable justamente para eso.
     enabled: true
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xwRd4Qu4Z}
+
 server:
   port: 8080
   # Sin esto, un error devuelve la pagina de error de Spring. Con esto, el JSON

@@ -39,6 +39,17 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Permite que el backend TAMBIÉN valide el JWT (doble validación,
+     exigida por la pauta oficial: no solo el API Gateway, también
+     el backend/BFF debe validar issuer + audience + firma). -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
 
         <!-- En Spring Boot 4 el RestClient.Builder autoconfigurado ya no viene
              dentro de starter-web: vive en su propio modulo. Es el cliente con
