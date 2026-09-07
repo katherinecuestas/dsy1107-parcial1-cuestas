@@ -32,6 +32,24 @@ public class SolicitudController {
         return ResponseEntity.created(URI.create("/solicitudes/" + creada.getId())).body(vista);
     }
 
+    // El solicitante edita SU PROPIA solicitud (validado en el Service),
+    // y SOLO si sigue pendiente (validado en la entidad).
+    @PutMapping("/{id}")
+    public SolicitudVista editar(@PathVariable Long id, @RequestBody SolicitudNueva body,
+            @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getSubject();
+        Solicitud editada = service.editar(id, body.tipo(), body.fechaInicio(), body.fechaFin(), email);
+        return SolicitudVista.desde(editada);
+    }
+
+    // "Eliminar" = borrado logico (cancelar). El HTTP sigue siendo DELETE,
+    // pero internamente la fila NO se borra, solo cambia de estado.
+    @DeleteMapping("/{id}")
+    public SolicitudVista cancelar(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getSubject();
+        return SolicitudVista.desde(service.cancelar(id, email));
+    }
+
     // El solicitante ve SOLO sus propias solicitudes.
     @GetMapping("/mias")
     public List<SolicitudVista> misSolicitudes(@AuthenticationPrincipal Jwt jwt) {
@@ -79,6 +97,15 @@ public class SolicitudController {
                     org.springframework.http.HttpStatus.FORBIDDEN,
                     "Se requiere el grupo '" + grupoRequerido + "'");
         }
+    }
+
+    // Convierte "no se puede editar/cancelar en este estado" en un 409
+    // Conflict (el codigo correcto quando el estado actual del recurso
+    // impide la operacion), en vez de un 500 generico.
+    @org.springframework.web.bind.annotation.ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> manejarEstadoInvalido(IllegalStateException ex) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                .body(ex.getMessage());
     }
 
     // ------- Records de entrada y salida (NUNCA se expone la entidad JPA) -------

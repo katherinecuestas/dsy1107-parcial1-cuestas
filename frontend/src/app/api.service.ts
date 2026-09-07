@@ -134,6 +134,23 @@ export class ApiService {
     );
   }
 
+    editarSolicitud(id: number, tipo: string, fechaInicio: string, fechaFin: string): Promise<Resultado> {
+    return this.ejecutar(
+      'PUT /solicitudes/{id}',
+      this.http.put(`${this.cfg.valor.apiUrl}/solicitudes/${id}`,
+        { tipo, fechaInicio, fechaFin },
+        { observe: 'response' }),
+    );
+  }
+
+  cancelarSolicitud(id: number): Promise<Resultado> {
+    return this.ejecutar(
+      'DELETE /solicitudes/{id}',
+      this.http.delete(`${this.cfg.valor.apiUrl}/solicitudes/${id}`,
+        { observe: 'response' }),
+    );
+  }
+
   misSolicitudes(): Promise<Resultado> {
     return this.ejecutar(
       'GET /solicitudes/mias',

@@ -219,7 +219,6 @@ resource "aws_apigatewayv2_route" "solicitudes_coleccion_post" {
 }
 
 
-
 resource "aws_apigatewayv2_route" "solicitudes_elemento_get" {
   api_id               = aws_apigatewayv2_api.api.id
   route_key            = "GET /solicitudes/{proxy+}"
@@ -232,6 +231,15 @@ resource "aws_apigatewayv2_route" "solicitudes_elemento_get" {
 resource "aws_apigatewayv2_route" "solicitudes_elemento_put" {
   api_id               = aws_apigatewayv2_api.api.id
   route_key            = "PUT /solicitudes/{proxy+}"
+  authorization_type   = "JWT"
+  authorizer_id        = aws_apigatewayv2_authorizer.cognito.id
+  authorization_scopes = ["openid"]
+  target               = "integrations/${aws_apigatewayv2_integration.solicitudes_elemento.id}"
+}
+
+resource "aws_apigatewayv2_route" "solicitudes_elemento_delete" {
+  api_id               = aws_apigatewayv2_api.api.id
+  route_key            = "DELETE /solicitudes/{proxy+}"
   authorization_type   = "JWT"
   authorizer_id        = aws_apigatewayv2_authorizer.cognito.id
   authorization_scopes = ["openid"]
