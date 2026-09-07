@@ -150,6 +150,13 @@ output "integracion_productos_coleccion_id" {
   value       = aws_apigatewayv2_integration.productos_coleccion.id
 }
 
+output "integracion_solicitudes_id" {
+  value = aws_apigatewayv2_integration.solicitudes_elemento.id
+}
+
+output "integracion_solicitudes_coleccion_id" {
+  value = aws_apigatewayv2_integration.solicitudes_coleccion.id
+}
 output "integracion_productos_elemento_id" {
   description = "Id de la integracion de ANY /productos/{proxy+}. Lo lee publicar-ecs.sh."
   value       = aws_apigatewayv2_integration.productos_elemento.id

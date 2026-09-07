@@ -81,7 +81,22 @@ terraform output -raw config_frontend &gt; ../frontend/public/config.json</pre>
         }
       </section>
     }
+        @if (auth.sesionActiva()) {
+      <section class="tarjeta">
+        <h2>4 · Sistema de Solicitudes</h2>
+        <p class="nota">Tus grupos: {{ grupos().join(', ') || 'ninguno' }}</p>
 
+        @if (esSolicitante()) {
+          <app-solicitante />
+        }
+        @if (esAprobador()) {
+          <app-aprobador />
+        }
+        @if (!esSolicitante() && !esAprobador()) {
+          <p>Este usuario no pertenece a ningún grupo (solicitantes/aprobadores).</p>
+        }
+      </section>
+    }
     <footer>
       <p class="nota">
         El botón «sin token» debe responder <strong>401</strong>: es la evidencia de que la API ya

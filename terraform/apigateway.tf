@@ -19,7 +19,7 @@ resource "aws_apigatewayv2_api" "api" {
     # El origen de Amplify va SIN barra final: un header Origin nunca la lleva.
     # Es el error espejo del de callback_urls, que si la exige.
     allow_origins = concat(var.origenes_frontend, [local.url_amplify])
-    allow_methods = ["GET", "OPTIONS"]
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 
     # "authorization" es el header que obliga al preflight OPTIONS. Si falta
     # aqui, el navegador cancela la peticion antes de enviarla.
@@ -172,6 +172,70 @@ resource "aws_apigatewayv2_route" "productos_elemento" {
   authorization_type   = "JWT"
   authorizer_id        = aws_apigatewayv2_authorizer.cognito.id
   authorization_scopes = ["openid"]
+}
+
+resource "aws_apigatewayv2_integration" "solicitudes_coleccion" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "HTTP_PROXY"
+  integration_method     = "ANY"
+  integration_uri        = "http://52.91.255.143:8080/solicitudes"
+  payload_format_version = "1.0"
+
+  lifecycle {
+    ignore_changes = [integration_uri]
+  }
+}
+
+resource "aws_apigatewayv2_integration" "solicitudes_elemento" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "HTTP_PROXY"
+  integration_method     = "ANY"
+  integration_uri        = "http://52.91.255.143:8080/solicitudes/{proxy}"
+  payload_format_version = "1.0"
+
+  lifecycle {
+    ignore_changes = [integration_uri]
+  }
+}
+
+
+
+resource "aws_apigatewayv2_route" "solicitudes_coleccion_get" {
+  api_id               = aws_apigatewayv2_api.api.id
+  route_key            = "GET /solicitudes"
+  authorization_type   = "JWT"
+  authorizer_id        = aws_apigatewayv2_authorizer.cognito.id
+  authorization_scopes = ["openid"]
+  target               = "integrations/${aws_apigatewayv2_integration.solicitudes_coleccion.id}"
+}
+
+resource "aws_apigatewayv2_route" "solicitudes_coleccion_post" {
+  api_id               = aws_apigatewayv2_api.api.id
+  route_key            = "POST /solicitudes"
+  authorization_type   = "JWT"
+  authorizer_id        = aws_apigatewayv2_authorizer.cognito.id
+  authorization_scopes = ["openid"]
+  target               = "integrations/${aws_apigatewayv2_integration.solicitudes_coleccion.id}"
+}
+
+
+
+resource "aws_apigatewayv2_route" "solicitudes_elemento_get" {
+  api_id               = aws_apigatewayv2_api.api.id
+  route_key            = "GET /solicitudes/{proxy+}"
+  authorization_type   = "JWT"
+  authorizer_id        = aws_apigatewayv2_authorizer.cognito.id
+  authorization_scopes = ["openid"]
+  target               = "integrations/${aws_apigatewayv2_integration.solicitudes_elemento.id}"
+}
+
+resource "aws_apigatewayv2_route" "solicitudes_elemento_put" {
+  api_id               = aws_apigatewayv2_api.api.id
+  route_key            = "PUT /solicitudes/{proxy+}"
+  authorization_type   = "JWT"
+  authorizer_id        = aws_apigatewayv2_authorizer.cognito.id
+  authorization_scopes = ["openid"]
+  target               = "integrations/${aws_apigatewayv2_integration.solicitudes_elemento.id}"
 }
 
 resource "aws_apigatewayv2_stage" "default" {

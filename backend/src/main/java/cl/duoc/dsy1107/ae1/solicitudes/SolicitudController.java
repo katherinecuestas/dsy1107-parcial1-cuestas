@@ -26,7 +26,7 @@ public class SolicitudController {
     @PostMapping
     public ResponseEntity<SolicitudVista> crear(@RequestBody SolicitudNueva body,
             @AuthenticationPrincipal Jwt jwt) {
-        String email = jwt.getClaimAsString("email");
+        String email = jwt.getSubject();
         Solicitud creada = service.crear(body.tipo(), body.fechaInicio(), body.fechaFin(), email);
         SolicitudVista vista = SolicitudVista.desde(creada);
         return ResponseEntity.created(URI.create("/solicitudes/" + creada.getId())).body(vista);
@@ -35,7 +35,7 @@ public class SolicitudController {
     // El solicitante ve SOLO sus propias solicitudes.
     @GetMapping("/mias")
     public List<SolicitudVista> misSolicitudes(@AuthenticationPrincipal Jwt jwt) {
-        String email = jwt.getClaimAsString("email");
+        String email = jwt.getSubject();
         return service.listarPorSolicitante(email).stream()
                 .map(SolicitudVista::desde)
                 .toList();

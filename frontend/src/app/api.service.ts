@@ -123,4 +123,44 @@ export class ApiService {
       ),
     );
   }
+    // -------- Solicitudes (examen: solicitante/aprobador) --------
+
+  crearSolicitud(tipo: string, fechaInicio: string, fechaFin: string): Promise<Resultado> {
+    return this.ejecutar(
+      'POST /solicitudes',
+      this.http.post(`${this.cfg.valor.apiUrl}/solicitudes`,
+        { tipo, fechaInicio, fechaFin },
+        { observe: 'response' }),
+    );
+  }
+
+  misSolicitudes(): Promise<Resultado> {
+    return this.ejecutar(
+      'GET /solicitudes/mias',
+      this.http.get(`${this.cfg.valor.apiUrl}/solicitudes/mias`, { observe: 'response' }),
+    );
+  }
+
+  solicitudesPendientes(): Promise<Resultado> {
+    return this.ejecutar(
+      'GET /solicitudes/pendientes',
+      this.http.get(`${this.cfg.valor.apiUrl}/solicitudes/pendientes`, { observe: 'response' }),
+    );
+  }
+
+  aprobarSolicitud(id: number, comentario: string): Promise<Resultado> {
+    return this.ejecutar(
+      'PUT /solicitudes/{id}/aprobar',
+      this.http.put(`${this.cfg.valor.apiUrl}/solicitudes/${id}/aprobar`,
+        { comentario }, { observe: 'response' }),
+    );
+  }
+
+  rechazarSolicitud(id: number, comentario: string): Promise<Resultado> {
+    return this.ejecutar(
+      'PUT /solicitudes/{id}/rechazar',
+      this.http.put(`${this.cfg.valor.apiUrl}/solicitudes/${id}/rechazar`,
+        { comentario }, { observe: 'response' }),
+    );
+  }
 }

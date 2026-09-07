@@ -21,6 +21,7 @@ export interface Claims {
   readonly scope?: string;
   readonly email?: string;
   readonly name?: string;
+  readonly 'cognito:groups'?: string[];
 }
 
 export function decodificarJwt(token: string | null | undefined): Claims | null {

@@ -53,6 +53,8 @@ API_ID="$(leer API_ID api_id)"
 INTEGRACION_ID="$(leer INTEGRATION_ID integracion_id)"
 INTEGRACION_PRODUCTOS_COL="$(leer INTEGRATION_PRODUCTOS_COL_ID integracion_productos_coleccion_id)"
 INTEGRACION_PRODUCTOS_ELE="$(leer INTEGRATION_PRODUCTOS_ELE_ID integracion_productos_elemento_id)"
+INTEGRACION_SOLICITUDES="$(leer INTEGRATION_SOLICITUDES_ID integracion_solicitudes_id)"
+INTEGRACION_SOLICITUDES_COL="$(leer INTEGRATION_SOLICITUDES_COL_ID integracion_solicitudes_coleccion_id)"
 
 # Etiqueta unica por despliegue, como pedia la lamina 19: reutilizar una
 # etiqueta hace imposible saber que esta corriendo, y volver atras.
@@ -216,6 +218,8 @@ reapuntar "$INTEGRACION_PRODUCTOS_COL" "/productos"
 # literal al API Gateway, que es quien la sustituye por el trozo de ruta que
 # capturo {proxy+}.
 reapuntar "$INTEGRACION_PRODUCTOS_ELE" "/productos/{proxy}"
+reapuntar "$INTEGRACION_SOLICITUDES_COL" "/solicitudes"
+reapuntar "$INTEGRACION_SOLICITUDES" "/solicitudes/{proxy}"
 
 echo
 echo "OK  ${VERSION} desplegada."

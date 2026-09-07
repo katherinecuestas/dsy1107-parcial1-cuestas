@@ -1,13 +1,14 @@
 import { JsonPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-
+import { SolicitanteComponent } from './solicitante.component';
+import { AprobadorComponent } from './aprobador.component';
 import { ApiService, Resultado } from './api.service';
 import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
 
 @Component({
   selector: 'app-root',
-  imports: [JsonPipe],
+  imports: [JsonPipe, SolicitanteComponent, AprobadorComponent],
   templateUrl: './app.html',
 })
 export class App {
@@ -25,6 +26,10 @@ export class App {
     const segundos = total % 60;
     return `${minutos}:${String(segundos).padStart(2, '0')}`;
   });
+
+  protected readonly grupos = computed<string[]>(() => this.auth.idClaims()?.['cognito:groups'] ?? []);
+  protected readonly esSolicitante = computed(() => this.grupos().includes('solicitantes'));
+  protected readonly esAprobador = computed(() => this.grupos().includes('aprobadores'));
 
   constructor() {
     // Si volvemos del Hosted UI, la URL trae ?code=: hay que canjearlo.

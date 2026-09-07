@@ -144,3 +144,65 @@ resource "aws_cognito_user" "demo" {
   # No enviar correo de invitacion: el usuario es ficticio.
   message_action = "SUPPRESS"
 }
+
+
+# -----------------------------------------------------------------------------
+# Grupos para diferenciar roles: quien solicita y quien aprueba.
+# El API Gateway no puede filtrar por grupo directamente (necesitaria un
+# Lambda Authorizer), asi que el backend (BFF) lee "cognito:groups" del JWT
+# y decide alli si la accion esta permitida. Doble capa: el Gateway valida
+# identidad, el backend valida autorizacion especifica.
+# -----------------------------------------------------------------------------
+resource "aws_cognito_user_group" "solicitantes" {
+  name         = "solicitantes"
+  user_pool_id = aws_cognito_user_pool.pool.id
+  description  = "Puede crear y ver sus propias solicitudes"
+}
+
+resource "aws_cognito_user_group" "aprobadores" {
+  name         = "aprobadores"
+  user_pool_id = aws_cognito_user_pool.pool.id
+  description  = "Puede ver todas las solicitudes pendientes y aprobar/rechazar"
+}
+
+# Usuario de prueba: solicitante
+resource "aws_cognito_user" "solicitante_demo" {
+  user_pool_id = aws_cognito_user_pool.pool.id
+  username     = "solicitante@duoc.cl"
+  password     = "Duoc2026"
+
+  attributes = {
+    email          = "solicitante@duoc.cl"
+    email_verified = true
+    name           = "Solicitante Demo"
+  }
+
+  message_action = "SUPPRESS"
+}
+
+resource "aws_cognito_user_in_group" "solicitante_en_grupo" {
+  user_pool_id = aws_cognito_user_pool.pool.id
+  group_name   = aws_cognito_user_group.solicitantes.name
+  username     = aws_cognito_user.solicitante_demo.username
+}
+
+# Usuario de prueba: aprobador
+resource "aws_cognito_user" "aprobador_demo" {
+  user_pool_id = aws_cognito_user_pool.pool.id
+  username     = "aprobador@duoc.cl"
+  password     = "Duoc2026"
+
+  attributes = {
+    email          = "aprobador@duoc.cl"
+    email_verified = true
+    name           = "Aprobador Demo"
+  }
+
+  message_action = "SUPPRESS"
+}
+
+resource "aws_cognito_user_in_group" "aprobador_en_grupo" {
+  user_pool_id = aws_cognito_user_pool.pool.id
+  group_name   = aws_cognito_user_group.aprobadores.name
+  username     = aws_cognito_user.aprobador_demo.username
+}
