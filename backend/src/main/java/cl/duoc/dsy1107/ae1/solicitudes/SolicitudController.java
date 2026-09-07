@@ -25,7 +25,7 @@ public class SolicitudController {
     // nunca del body: así nadie puede crear una solicitud a nombre de otro.
     @PostMapping
     public ResponseEntity<SolicitudVista> crear(@RequestBody SolicitudNueva body,
-                                                  @AuthenticationPrincipal Jwt jwt) {
+            @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         Solicitud creada = service.crear(body.tipo(), body.fechaInicio(), body.fechaFin(), email);
         SolicitudVista vista = SolicitudVista.desde(creada);
@@ -43,7 +43,8 @@ public class SolicitudController {
 
     // El aprobador ve TODAS las solicitudes pendientes.
     @GetMapping("/pendientes")
-    public List<SolicitudVista> pendientes() {
+    public List<SolicitudVista> pendientes(@AuthenticationPrincipal Jwt jwt) {
+        exigirGrupo(jwt, "aprobadores");
         return service.listarPendientes().stream()
                 .map(SolicitudVista::desde)
                 .toList();
@@ -56,14 +57,28 @@ public class SolicitudController {
 
     // El aprobador aprueba con un comentario.
     @PutMapping("/{id}/aprobar")
-    public SolicitudVista aprobar(@PathVariable Long id, @RequestBody ComentarioAprobacion body) {
+    public SolicitudVista aprobar(@PathVariable Long id, @RequestBody ComentarioAprobacion body,
+            @AuthenticationPrincipal Jwt jwt) {
+        exigirGrupo(jwt, "aprobadores");
         return SolicitudVista.desde(service.aprobar(id, body.comentario()));
     }
 
     // El aprobador rechaza con un comentario.
     @PutMapping("/{id}/rechazar")
-    public SolicitudVista rechazar(@PathVariable Long id, @RequestBody ComentarioAprobacion body) {
+    public SolicitudVista rechazar(@PathVariable Long id, @RequestBody ComentarioAprobacion body,
+            @AuthenticationPrincipal Jwt jwt) {
+        exigirGrupo(jwt, "aprobadores");
         return SolicitudVista.desde(service.rechazar(id, body.comentario()));
+    }
+
+    // Lanza 403 si el JWT no trae el grupo requerido en "cognito:groups".
+    private void exigirGrupo(Jwt jwt, String grupoRequerido) {
+        List<String> grupos = jwt.getClaimAsStringList("cognito:groups");
+        if (grupos == null || !grupos.contains(grupoRequerido)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Se requiere el grupo '" + grupoRequerido + "'");
+        }
     }
 
     // ------- Records de entrada y salida (NUNCA se expone la entidad JPA) -------
@@ -71,15 +86,15 @@ public class SolicitudController {
     public record SolicitudNueva(
             @NotBlank String tipo,
             Instant fechaInicio,
-            Instant fechaFin
-    ) {}
+            Instant fechaFin) {
+    }
 
-    public record ComentarioAprobacion(String comentario) {}
+    public record ComentarioAprobacion(String comentario) {
+    }
 
     public record SolicitudVista(
             Long id, String tipo, Instant fechaInicio, Instant fechaFin,
-            EstadoSolicitud estado, String comentario, String solicitanteEmail, Instant creadoEn
-    ) {
+            EstadoSolicitud estado, String comentario, String solicitanteEmail, Instant creadoEn) {
         static SolicitudVista desde(Solicitud s) {
             return new SolicitudVista(s.getId(), s.getTipo(), s.getFechaInicio(), s.getFechaFin(),
                     s.getEstado(), s.getComentario(), s.getSolicitanteEmail(), s.getCreadoEn());
