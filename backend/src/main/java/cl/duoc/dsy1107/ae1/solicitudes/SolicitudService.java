@@ -66,6 +66,15 @@ public class SolicitudService {
         return repository.save(solicitud);
     }
 
+    // El dueño ve su propia solicitud; un aprobador puede ver cualquiera (las
+    // tiene que poder revisar antes de aprobar/rechazar). Mismo patron que
+    // editar/cancelar: buscar primero, autorizar despues.
+    public Solicitud verUna(Long id, String solicitanteEmail, List<String> grupos) {
+        Solicitud solicitud = buscarPorId(id);
+        exigirDuenoOAprobador(solicitud, solicitanteEmail, grupos);
+        return solicitud;
+    }
+
     // Nadie puede editar o cancelar la solicitud de otra persona, aunque
     // esté "pendiente". Esta es la version de "autorizacion" que SI
     // necesita el Service (necesita comparar contra el JWT).
@@ -74,6 +83,18 @@ public class SolicitudService {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN,
                     "No puedes modificar una solicitud que no es tuya");
+        }
+    }
+
+    // Igual que exigirDueno, pero para lectura: ademas del dueño, un
+    // aprobador tambien puede ver la solicitud (no solo las pendientes).
+    private void exigirDuenoOAprobador(Solicitud solicitud, String solicitanteEmail, List<String> grupos) {
+        boolean esDueno = solicitud.getSolicitanteEmail().equals(solicitanteEmail);
+        boolean esAprobador = grupos != null && grupos.contains("aprobadores");
+        if (!esDueno && !esAprobador) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "No puedes ver una solicitud que no es tuya");
         }
     }
 }

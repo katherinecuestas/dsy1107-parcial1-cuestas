@@ -1,21 +1,15 @@
-# =============================================================================
-# El IDaaS: un user pool de Amazon Cognito
-#
-# Equivale al "tenant" de la actividad 1.2.3 y a la "app" de la 1.2.4, pero
-# escrito en vez de clickeado. El user pool es el directorio de usuarios + el
-# servidor de autorizacion (/authorize, /token, /userInfo, /jwks).
-# =============================================================================
-
 resource "aws_cognito_user_pool" "pool" {
-  # El sufijo "-ng" existe para que este despliegue pueda convivir con el de la
-  # version React (1.2.9) en la misma cuenta: el dominio del Hosted UI es unico
-  # a nivel MUNDIAL, asi que dos pools no pueden pedir el mismo.
   name = "dsy1107-ng-${var.estudiante}"
 
-  # El correo es el nombre de usuario. Es lo habitual en un CIAM: el cliente no
-  # quiere inventar un username, quiere entrar con su correo.
+  # Login con email, sin username separado
   username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
+
+  # Protege el pool de un destroy/recreate accidental
+  deletion_protection = "ACTIVE"
+
+  # Explícito, aunque sea el default: fue decisión, no olvido
+  mfa_configuration = "OFF"
 
   password_policy {
     minimum_length    = 8
@@ -25,9 +19,7 @@ resource "aws_cognito_user_pool" "pool" {
     require_symbols   = false
   }
 
-  # Solo un administrador crea usuarios. En un CIAM real (1.2.2) esto seria
-  # false para permitir el auto-registro; aqui interesa que el pool tenga
-  # exactamente el usuario que declaramos y ninguno mas.
+  # Nadie se auto-registra: los roles se asignan a mano
   admin_create_user_config {
     allow_admin_create_user_only = true
   }
@@ -39,96 +31,80 @@ resource "aws_cognito_user_pool" "pool" {
     }
   }
 
-  # Nota de costos: el tier por defecto (Essentials) incluye 10.000 usuarios
-  # activos al mes en la capa gratuita. Un curso completo no se acerca a eso.
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_CODE"
+  }
+
+  tags = {
+    Proyecto   = "parcial1-dsy1107"
+    Estudiante = var.estudiante
+    Origen     = "terraform"
+  }
 }
 
-# -----------------------------------------------------------------------------
-# El dominio del Hosted UI: aqui viven /oauth2/authorize, /oauth2/token,
-# /oauth2/userInfo y /logout. Es el "servidor de autorizacion" de la lamina 11
-# de la presentacion 1.2.1.
-# -----------------------------------------------------------------------------
-
-locals {
-  # Ver la nota de var.cognito_dominio en variables.tf.
-  dominio_hosted_ui = var.cognito_dominio != "" ? var.cognito_dominio : "dsy1107-ng-${var.estudiante}"
-}
-
-resource "aws_cognito_user_pool_domain" "hosted_ui" {
-  domain       = local.dominio_hosted_ui
-  user_pool_id = aws_cognito_user_pool.pool.id
-
-  # 1 = Hosted UI clasica, sin configuracion extra.
-  # 2 = Managed Login, la pantalla nueva; exige definir un branding style o la
-  #     pagina de login queda en blanco.
-  managed_login_version = 1
-}
-
-# -----------------------------------------------------------------------------
-# La aplicacion cliente: nuestro front en Angular.
-#
-# Es un CLIENTE PUBLICO (generate_secret = false): el codigo de una SPA se
-# descarga completo en el navegador, asi que no puede guardar un secreto. Por
-# eso el flujo es Authorization Code + PKCE (RFC 7636), donde el secreto lo
-# reemplaza un code_verifier distinto en cada login.
-# -----------------------------------------------------------------------------
 
 resource "aws_cognito_user_pool_client" "spa" {
-  name         = "spa-angular"
+  name = "spa-angular"
+  # user_pool_id conecta este cliente al directorio de usuarios que ya creamos.
+  # Sin esta línea, Cognito no sabría a qué User Pool pertenece esta app.
   user_pool_id = aws_cognito_user_pool.pool.id
 
+  # false porque es una SPA: el código corre en el navegador del usuario,
+  # cualquiera podría abrir DevTools y leer un secreto si existiera.
+  # Por eso el login usa PKCE en vez de un client_secret.
   generate_secret = false
 
-  allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_flows                  = ["code"]
-  supported_identity_providers         = ["COGNITO"]
-
-  # Los permisos que el token puede llevar (los "scopes" de la lamina 13 de 1.2.1):
-  #   openid  -> obligatorio en OIDC, habilita el ID Token
-  #   email   -> agrega el correo a /oauth2/userInfo
-  #   profile -> agrega nombre y demas atributos de perfil
-  #   aws.cognito.signin.user.admin -> habilita la API GetUser de Cognito
-  allowed_oauth_scopes = [
-    "openid",
-    "email",
-    "profile",
-    "aws.cognito.signin.user.admin",
+  explicit_auth_flows = [
+    #"ALLOW_USER_SRP_AUTH",       login con protocolo seguro: la contraseña nunca viaja en texto plano
+    "ALLOW_REFRESH_TOKEN_AUTH", # permite renovar el access token sin pedir la contraseña de nuevo
   ]
 
-  # A los origenes de desarrollo local se suma la URL de Amplify, que solo se
-  # conoce despues de crear la app. Por eso se concatena aqui y no se escribe
-  # a mano en las variables: un solo apply deja el login funcionando en
-  # localhost y en el dominio publicado, sin copiar URLs entre pasos.
-  #
-  # La barra final es obligatoria: callback_urls se compara EXACTA contra el
-  # redirect_uri que envia el front.
-  callback_urls = concat(var.callback_urls, ["${local.url_amplify}/"])
-  logout_urls   = concat(var.logout_urls, ["${local.url_amplify}/"])
+  # Activa OAuth2 en este cliente. Sin esto en true, callback_urls, logout_urls,
+  # allowed_oauth_scopes y allowed_oauth_flows quedan sin efecto, aunque los escribas.
+  allowed_oauth_flows_user_pool_client = true
 
-  # Tokens cortos a proposito: que el 401 por expiracion se vea en clase.
-  access_token_validity  = 60
-  id_token_validity      = 60
-  refresh_token_validity = 1
+  # "code" = Authorization Code Flow, el mismo que vimos en el mapa del aeropuerto:
+  # Cognito entrega un código temporal, y ese código se cambia por el JWT usando PKCE.
+  allowed_oauth_flows = ["code"]
 
+  # Scopes de identidad (OIDC), distintos a los scopes de negocio (solicitud:aprobar, etc.)
+  # que va a inyectar la Lambda de pre-token trigger más adelante.
+  allowed_oauth_scopes = ["openid", "email", "profile"]
+
+  callback_urls = var.callback_urls # a dónde vuelve el navegador después del login
+  logout_urls   = var.logout_urls   # a dónde vuelve después del logout
+
+  supported_identity_providers = ["COGNITO"] # el único proveedor de identidad es el propio Cognito
+  # Define cuánto dura cada token antes de expirar, y en qué unidad.
+  # Sin esto, Cognito usa defaults (horas para access/id, días para refresh)
+  # que quedan implícitos y sin que tú los hayas decidido conscientemente.
   token_validity_units {
     access_token  = "minutes"
     id_token      = "minutes"
     refresh_token = "days"
   }
 
-  # El front nunca ve la contrasena: la escribe el usuario en el Hosted UI.
-  # Por eso el unico flujo directo habilitado es el refresh.
-  explicit_auth_flows = ["ALLOW_REFRESH_TOKEN_AUTH"]
+  access_token_validity  = 60 # el access token dura 1 hora: bastante corto,
+  id_token_validity      = 60 # así si alguien lo roba, la ventana de daño es limitada
+  refresh_token_validity = 30 # 30 días para no forzar login constante
 
-  # No revela si un correo existe o no cuando el login falla.
+  # Evita que un atacante pueda distinguir "usuario no existe" de "contraseña
+  # incorrecta" al intentar loguearse — con esto activado, Cognito responde
+  # el mismo error genérico en ambos casos, dificultando enumerar usuarios
+  # válidos por fuerza bruta.
   prevent_user_existence_errors = "ENABLED"
-  enable_token_revocation       = true
+
+  # Permite invalidar el refresh token si el usuario cierra sesión o si
+  # detectas actividad sospechosa — sin esto, un refresh token robado
+  # sigue siendo válido hasta que expire solo, aunque el usuario "cierre sesión".
+  enable_token_revocation = true
 }
 
-# -----------------------------------------------------------------------------
-# Un usuario de prueba, ya confirmado y con contrasena definitiva.
-# Sin esto habria que crearlo a mano en la consola antes de cada demo.
-# -----------------------------------------------------------------------------
+resource "aws_cognito_user_pool_domain" "hosted_ui" {
+  domain                = local.dominio_hosted_ui
+  user_pool_id          = aws_cognito_user_pool.pool.id
+  managed_login_version = 1
+}
 
 resource "aws_cognito_user" "demo" {
   user_pool_id = aws_cognito_user_pool.pool.id
@@ -141,31 +117,9 @@ resource "aws_cognito_user" "demo" {
     name           = "oscar"
   }
 
-  # No enviar correo de invitacion: el usuario es ficticio.
   message_action = "SUPPRESS"
 }
 
-
-# -----------------------------------------------------------------------------
-# Grupos para diferenciar roles: quien solicita y quien aprueba.
-# El API Gateway no puede filtrar por grupo directamente (necesitaria un
-# Lambda Authorizer), asi que el backend (BFF) lee "cognito:groups" del JWT
-# y decide alli si la accion esta permitida. Doble capa: el Gateway valida
-# identidad, el backend valida autorizacion especifica.
-# -----------------------------------------------------------------------------
-resource "aws_cognito_user_group" "solicitantes" {
-  name         = "solicitantes"
-  user_pool_id = aws_cognito_user_pool.pool.id
-  description  = "Puede crear y ver sus propias solicitudes"
-}
-
-resource "aws_cognito_user_group" "aprobadores" {
-  name         = "aprobadores"
-  user_pool_id = aws_cognito_user_pool.pool.id
-  description  = "Puede ver todas las solicitudes pendientes y aprobar/rechazar"
-}
-
-# Usuario de prueba: solicitante
 resource "aws_cognito_user" "solicitante_demo" {
   user_pool_id = aws_cognito_user_pool.pool.id
   username     = "solicitante@duoc.cl"
@@ -180,13 +134,6 @@ resource "aws_cognito_user" "solicitante_demo" {
   message_action = "SUPPRESS"
 }
 
-resource "aws_cognito_user_in_group" "solicitante_en_grupo" {
-  user_pool_id = aws_cognito_user_pool.pool.id
-  group_name   = aws_cognito_user_group.solicitantes.name
-  username     = aws_cognito_user.solicitante_demo.username
-}
-
-# Usuario de prueba: aprobador
 resource "aws_cognito_user" "aprobador_demo" {
   user_pool_id = aws_cognito_user_pool.pool.id
   username     = "aprobador@duoc.cl"
@@ -201,8 +148,29 @@ resource "aws_cognito_user" "aprobador_demo" {
   message_action = "SUPPRESS"
 }
 
+resource "aws_cognito_user_group" "solicitantes" {
+  name         = "solicitantes"
+  user_pool_id = aws_cognito_user_pool.pool.id
+  description  = "Puede crear y ver sus propias solicitudes"
+}
+
+resource "aws_cognito_user_group" "aprobadores" {
+  name         = "aprobadores"
+  user_pool_id = aws_cognito_user_pool.pool.id
+  description  = "Puede ver todas las solicitudes pendientes y aprobar/rechazar"
+}
+
+
+resource "aws_cognito_user_in_group" "solicitante_en_grupo" {
+  user_pool_id = aws_cognito_user_pool.pool.id
+  group_name   = aws_cognito_user_group.solicitantes.name
+  username     = aws_cognito_user.solicitante_demo.username
+}
+
+
 resource "aws_cognito_user_in_group" "aprobador_en_grupo" {
   user_pool_id = aws_cognito_user_pool.pool.id
   group_name   = aws_cognito_user_group.aprobadores.name
   username     = aws_cognito_user.aprobador_demo.username
 }
+

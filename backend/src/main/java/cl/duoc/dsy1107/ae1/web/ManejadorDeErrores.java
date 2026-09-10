@@ -1,10 +1,5 @@
 package cl.duoc.dsy1107.ae1.web;
 
-import cl.duoc.dsy1107.ae1.indicadores.IndicadorDesconocidoException;
-import cl.duoc.dsy1107.ae1.indicadores.OrigenNoDisponibleException;
-import cl.duoc.dsy1107.ae1.productos.ProductoNoEncontradoException;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,7 +7,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -24,11 +18,10 @@ import java.util.stream.Collectors;
  * Un 500 generico con una pagina de error de Spring no le dice nada al alumno;
  * un 502 con "el origen respondio 503" le dice exactamente quien fallo.
  *
- * Vive en el paquete web y no dentro de indicadores porque ya no es de ese
- * dominio: atiende tambien el CRUD de productos, y va a atender lo que venga.
- * Un @RestControllerAdvice es global por definicion; tenerlo escondido dentro de
- * un paquete de dominio invita a que el siguiente escriba un segundo manejador
- * sin saber que este existia.
+ * Vive en el paquete web y no dentro de un paquete de dominio porque es
+ * global por definicion: atiende lo que venga, no un dominio en particular.
+ * Tenerlo escondido dentro de un paquete de dominio invita a que el
+ * siguiente escriba un segundo manejador sin saber que este existia.
  */
 @RestControllerAdvice
 public class ManejadorDeErrores {
@@ -39,36 +32,6 @@ public class ManejadorDeErrores {
      * @param momento cuando, para poder cruzarlo con los logs
      */
     public record ErrorHttp(String error, String detalle, Instant momento) {
-    }
-
-    /** Indicador que no existe: 404, y de paso se dice cuales si existen. */
-    @ExceptionHandler(IndicadorDesconocidoException.class)
-    public ResponseEntity<Cuerpo404> desconocido(IndicadorDesconocidoException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new Cuerpo404(e.getMessage(), e.disponibles(), Instant.now()));
-    }
-
-    public record Cuerpo404(String error, List<String> disponibles, Instant momento) {
-    }
-
-    /**
-     * El origen no responde y no hay copia guardada.
-     *
-     * 502 y no 500: el que fallo no fue este servicio, fue aquel del que depende.
-     * La diferencia importa cuando alguien tiene que decidir a quien despertar.
-     */
-    @ExceptionHandler(OrigenNoDisponibleException.class)
-    public ResponseEntity<ErrorHttp> origenCaido(OrigenNoDisponibleException e) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(new ErrorHttp("El origen " + e.origen() + " no esta disponible",
-                        e.getMessage(), Instant.now()));
-    }
-
-    /** El id pedido no esta en la tabla. */
-    @ExceptionHandler(ProductoNoEncontradoException.class)
-    public ResponseEntity<ErrorHttp> productoNoEncontrado(ProductoNoEncontradoException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorHttp("Producto no encontrado", e.getMessage(), Instant.now()));
     }
 
     /**

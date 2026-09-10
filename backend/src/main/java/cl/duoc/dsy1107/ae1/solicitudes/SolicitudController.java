@@ -69,8 +69,10 @@ public class SolicitudController {
     }
 
     @GetMapping("/{id}")
-    public SolicitudVista verUna(@PathVariable Long id) {
-        return SolicitudVista.desde(service.buscarPorId(id));
+    public SolicitudVista verUna(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getSubject();
+        List<String> grupos = jwt.getClaimAsStringList("cognito:groups");
+        return SolicitudVista.desde(service.verUna(id, email, grupos));
     }
 
     // El aprobador aprueba con un comentario.
