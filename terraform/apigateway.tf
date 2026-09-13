@@ -1,7 +1,7 @@
 resource "aws_apigatewayv2_api" "api" {
   name          = "api-parcial1-dsy1107-${var.estudiante}"
   protocol_type = "HTTP"
-  description   = "DSY1107 1.2.9 (Angular) - mindicador.cl protegido con Cognito"
+  description   = "parcial1"
 
   # Sin esto el navegador bloquea la respuesta por Same-Origin Policy, aunque
   # la API responda 200. Postman no lo nota; el front si.

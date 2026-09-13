@@ -35,6 +35,16 @@ resource "aws_cognito_user_pool" "pool" {
     default_email_option = "CONFIRM_WITH_CODE"
   }
 
+  # El pre-token generation trigger: sin esto, Cognito nunca llama a la
+  # Lambda, y agregar un usuario a un grupo no inyecta ningun scope real
+  # en el token — solo queda "cognito:groups", que no es lo mismo.
+  lambda_config {
+    pre_token_generation_config {
+      lambda_arn     = aws_lambda_function.pretoken_scopes.arn
+      lambda_version = "V2_0"
+    }
+  }
+
   tags = {
     Proyecto   = "parcial1-dsy1107"
     Estudiante = var.estudiante
@@ -69,7 +79,7 @@ resource "aws_cognito_user_pool_client" "spa" {
 
   # Scopes de identidad (OIDC), distintos a los scopes de negocio (solicitud:aprobar, etc.)
   # que va a inyectar la Lambda de pre-token trigger más adelante.
-  allowed_oauth_scopes = ["openid", "email", "profile"]
+  allowed_oauth_scopes = ["openid", "email", "profile", "aws.cognito.signin.user.admin"]
 
   callback_urls = var.callback_urls # a dónde vuelve el navegador después del login
   logout_urls   = var.logout_urls   # a dónde vuelve después del logout
