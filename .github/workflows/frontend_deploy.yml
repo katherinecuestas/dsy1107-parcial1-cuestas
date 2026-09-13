@@ -38,7 +38,7 @@ jobs:
           REDIRECT_URI: ${{ vars.REDIRECT_URI }}
           API_URL: ${{ vars.API_URL }}
           EXIGIR_HTTPS: '1'
-        run: scripts/config-frontend.sh
+        run: bash scripts/config-frontend.sh
 
       - name: Instalar dependencias
         working-directory: frontend
