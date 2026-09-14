@@ -2,7 +2,7 @@ exports.handler = async (event) => {
   const grupos = event.request.groupConfiguration.groupsToOverride || [];
 
   const scopesPorGrupo = {
-    solicitantes: ["solicitud:crear", "solicitud:leer"],
+    solicitantes: ["solicitud:crear", "solicitud:leer", "solicitud:cancelar"],
     aprobadores: ["solicitud:leer", "solicitud:aprobar", "solicitud:rechazar"],
   };
 

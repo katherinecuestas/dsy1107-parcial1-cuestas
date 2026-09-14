@@ -17,13 +17,13 @@ variable "aws_region" {
 variable "callback_urls" {
   description = "URLs a las que el Hosted UI puede devolver el authorization code. Debe coincidir EXACTA con redirect_uri del front."
   type        = list(string)
-  default     = ["http://localhost:4200/", "http://localhost:5173/"]
+  default     = ["http://localhost:4200/", "http://localhost:5173/", "https://main.d2ii8hclnf0dvz.amplifyapp.com/"]
 }
 
 variable "logout_urls" {
   description = "URLs a las que Cognito puede volver despues del logout."
   type        = list(string)
-  default     = ["http://localhost:4200/", "http://localhost:5173/"]
+  default     = ["http://localhost:4200/", "http://localhost:5173/", "https://main.d2ii8hclnf0dvz.amplifyapp.com/"]
 }
 
 variable "cognito_dominio" {

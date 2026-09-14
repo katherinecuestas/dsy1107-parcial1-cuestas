@@ -1,8 +1,3 @@
-# =============================================================================
-# Outputs — valores que Terraform imprime despues de aplicar, para no tener
-# que ir a buscarlos a mano en la consola de AWS cada vez que se necesitan.
-# =============================================================================
-
 output "user_pool_id" {
   description = "Identificador del User Pool."
   value       = aws_cognito_user_pool.pool.id
@@ -48,15 +43,6 @@ output "usuario_demo_aprobador" {
   value       = aws_cognito_user.aprobador_demo.username
 }
 
-# -----------------------------------------------------------------------------
-# Configuracion lista para el frontend Angular. Angular no lee variables de
-# entorno del navegador, asi que la app hace fetch de un config.json estatico
-# al arrancar. Nada de esto es secreto: el client_id de una SPA es publico,
-# lo que protege el flujo es PKCE.
-#
-#     terraform output -raw config_frontend > ../frontend/public/config.json
-# -----------------------------------------------------------------------------
-
 output "config_frontend" {
   description = "Contenido listo para frontend/public/config.json en local (localhost:4200)."
   value       = <<-EOT
@@ -70,10 +56,6 @@ output "config_frontend" {
   EOT
 }
 
-# El gemelo de config_frontend para el build que se sube a Amplify. La unica
-# diferencia es redirectUri: alla el front vive en el dominio de Amplify, no
-# en localhost. Subir el build con el config de localhost es el fallo mas
-# comun del despliegue: Cognito corta en /authorize con redirect_mismatch.
 output "config_frontend_hosted" {
   description = "Contenido de public/config.json para el build que se publica en Amplify."
   value       = <<-EOT
@@ -97,12 +79,6 @@ output "probar_sin_token" {
   value       = "curl -s -o /dev/null -w 'HTTP %%{http_code}\\n' ${aws_apigatewayv2_api.api.api_endpoint}/solicitudes"
 }
 
-# -----------------------------------------------------------------------------
-# Identificadores que consume scripts/publicar-ecs.sh para reapuntar las
-# integraciones despues de cada despliegue. Sin balanceador, la IP de la task
-# cambia cada vez y el script es quien la actualiza — hay que reapuntar las
-# DOS integraciones de solicitudes, no solo una.
-# -----------------------------------------------------------------------------
 
 output "api_id" {
   description = "Id del HTTP API. Lo lee publicar-ecs.sh."
@@ -118,11 +94,6 @@ output "integracion_solicitudes_elemento_id" {
   description = "Id de la integracion de /solicitudes/{id} y sus sub-rutas (editar, aprobar, rechazar, cancelar). Lo lee publicar-ecs.sh."
   value       = aws_apigatewayv2_integration.solicitudes_elemento.id
 }
-
-# -----------------------------------------------------------------------------
-# La Lambda de scopes: util para depurarla desde la consola de AWS o desde la
-# CLI sin tener que ir a buscar el ARN a mano.
-# -----------------------------------------------------------------------------
 
 output "lambda_pretoken_arn" {
   description = "ARN de la Lambda de pre-token trigger. Sirve para revisar sus logs en CloudWatch."
