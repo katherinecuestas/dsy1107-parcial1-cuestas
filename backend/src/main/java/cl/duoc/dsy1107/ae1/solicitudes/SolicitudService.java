@@ -71,6 +71,9 @@ public class SolicitudService {
     // editar/cancelar: buscar primero, autorizar despues.
     public Solicitud verUna(Long id, String solicitanteEmail, List<String> grupos) {
         Solicitud solicitud = buscarPorId(id);
+        if (solicitud.getEstado() == EstadoSolicitud.CANCELADA) {
+            throw new SolicitudNoEncontradaException(id);
+        }
         exigirDuenoOAprobador(solicitud, solicitanteEmail, grupos);
         return solicitud;
     }
